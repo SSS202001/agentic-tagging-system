@@ -2,7 +2,6 @@
 
 A scalable, self-correcting classification pipeline designed to automate the tagging of Request for Proposal (RFP) documents.
 
-![System Architecture](images/architecture.png)
 
 ## 📖 Project Overview
 This system addresses the challenge of categorizing unstructured proposal data into a strict taxonomy. Unlike traditional classifiers that struggle with "tag drift" or hallucinations, this project implements a two-phase **Agentic Workflow**:
@@ -25,12 +24,29 @@ The system is architected to separate the *definition* of rules from the *applic
 
 * **Phase 1: Knowledge Engineering (Notebook)**
     * *Goal:* Establish ground truth.
-    * *Method:* We process the dataset in batch to identify high-level clusters. This ensures tags are consistent across the entire corpus rather than being invented row-by-row.
-    * *Outcome:* A version-controlled `taxonomy.json` artifact.
+    * *Method:* We processed the dataset in batch to identify high-level clusters. This generated a `taxonomy.json` file that acts as the strict schema for the downstream agent.
+    * *Artifact Output:* (Snippet of the actual generated taxonomy)
+    ```json
+      {
+        "Bridge Construction and Repair": {
+          "definition": "Projects involving the construction, replacement, or repair of bridges.",
+          "keywords": ["bridge", "replacement", "repair"]
+        },
+        "Roadway Rehabilitation and Resurfacing": {
+          "definition": "Projects focused on rehabilitating or resurfacing existing roadways, including milling, paving, and overlay work.",
+          "keywords": ["resurfacing", "rehabilitation", "paving"]
+        },
+        "Traffic and Safety Improvements": {
+           "definition": "Projects aimed at enhancing traffic flow, safety, and pedestrian accessibility.",
+           "keywords": ["traffic", "safety", "signals"]
+        }
+      }
+      ```
 
 * **Phase 2: Agentic Pipeline (Production Script)**
     * *Goal:* Reliable, scalable inference.
     * *Method:* A `LangGraph` state machine orchestrates the tagging. This allows for cyclic logic—if the `Validator` node detects an error, the flow routes back to the `Tagger` for a correction attempt.
+    * *Artifact Output:* A comprehensive CSV (`data/tagged_results.csv`) containing final tags, confidence scores, and evidence trails for every proposal.
 
 ### Decision Logic: Publish vs. Hold
 To ensure high data quality, the system enforces a strict quality gate. Proposals are only marked **PUBLISH** if they meet a composite score threshold (`>= 0.65`).
@@ -43,22 +59,48 @@ To ensure high data quality, the system enforces a strict quality gate. Proposal
 
 ---
 
-## 🧠 Architecture & Design Rationale
+## 🧠 Design Rationale
 
 ### Why this Architecture?
 We chose a **Two-Phase Agentic Workflow** to address specific limitations observed in standard LLM pipelines:
 
 1.  **Solving "Tag Drift" (Contextual Consistency)**
     * *The Engineering Problem:* If we classify proposals one by one (Zero-Shot), the LLM often invents slightly different tags for the same concept (e.g., "Civil Works" vs. "Construction") depending on the phrasing of the specific row.
-    * *Our Solution:* **Phase 1 (Taxonomy Discovery)** analyzes the *global* dataset first to establish a "Ground Truth" schema. The agent then strictly enforces this schema during inference, ensuring 100% consistency.
+    * *Solution:* **Phase 1 (Taxonomy Discovery)** analyzes the *global* dataset first to establish a "Ground Truth" schema. The agent then strictly enforces this schema during inference, ensuring 100% consistency.
 
 2.  **Reliability via State Machines (LangGraph)**
     * *The Engineering Problem:* Simple linear chains (Prompt A → Prompt B) are brittle. If the model output is malformed (e.g., missing JSON brackets), the pipeline crashes.
-    * *Our Solution:* We treat the tagging process as a **Cyclic State Machine**. If the `Validator` node detects a syntax error or hallucinated tag, it doesn't crash—it routes the flow back to the `Tagger` with error feedback for a second attempt (Self-Correction).
+    * *Solution:* We treat the tagging process as a **Cyclic State Machine**. If the `Validator` node detects a syntax error or hallucinated tag, it doesn't crash—it routes the flow back to the `Tagger` with error feedback for a second attempt (Self-Correction).
 
 3.  **Auditability vs. Black Box**
     * *The Engineering Problem:* End-users often mistrust AI decisions and cannot verify *why* a tag was applied.
-    * *Our Solution:* The **Composite Scoring System** requires the model to extract *verbatim evidence* (quotes) from the text. We prioritize explainability over raw speed, ensuring every tag is backed by source text.
+    * *Solution:* The **Composite Scoring System** requires the model to extract *verbatim evidence* (quotes) from the text. We prioritize explainability over raw speed, ensuring every tag is backed by source text.
+
+
+---
+
+### 🧩 Graph Logic & Control Flow
+
+![System Architecture](images/architecture.png)
+
+The system uses a cyclic graph (Cyclic State Machine) to ensure robustness. Here is the responsibility of each node in the architecture diagram above:
+
+1.  **Start Node:** Accepts the raw proposal text and the target `taxonomy.json` schema.
+2.  **Tagger (LLM Node):**
+    * *Model:* Llama 3.3 70B (via Groq).
+    * *Action:* Analyzes text and predicts tags + evidence quotes.
+    * *Context:* It is prompted to strictly adhere to the provided taxonomy.
+3.  **Validator (Deterministic Node):**
+    * *Action:* Pure Python code (no LLM). Checks if the predicted tags exist verbatim in the `taxonomy.json`.
+    * *Logic:*
+        * **If Invalid:** Routes to `Retry` node (passes error message).
+        * **If Valid:** Routes to `Scorer` node.
+4.  **Retry (Feedback Node):**
+    * *Action:* Appends the validation error to the chat history (e.g., *"Tag 'Civil' is invalid. Did you mean 'Civil Works'?"*) and loops back to the **Tagger**.
+    * *Limit:* Max 2 retries to prevent infinite loops.
+5.  **Scorer (Evaluation Node):**
+    * *Action:* Calculates the confidence score based on evidence presence and reasoning quality.
+    * *Outcome:* Formats the final JSON output with `PUBLISH` or `HOLD` status.
 
 ---
 
@@ -84,57 +126,78 @@ We chose a **Two-Phase Agentic Workflow** to address specific limitations observ
 ├── .env.example             # API Key configuration template
 └── requirements.txt         # Python dependencies
 
+```
 
-🚀 Setup & Installation
-1. Prerequisites
-Python 3.10+
+---
 
-A Groq Cloud API Key (Required for Llama 3.3 70B inference)
+## 🚀 Setup & Installation
 
-2. Install Dependencies
+### 1. Prerequisites
+* Python 3.10+
+* A Groq Cloud API Key (Required for Llama 3.3 70B inference)
+
+### 2. Install Dependencies
 Clone the repository and install the required packages:
 
-Bash
-
+```bash
 pip install -r requirements.txt
-3. Configure Secrets
+```
+
+### 3. Configure Secrets
 The system requires an API key to access the LLM.
 
 Rename .env.example to .env.
 
 Open the file and paste your Groq API key:
 
-Ini, TOML
-
+```Ini, TOML
 GROQ_API_KEY=gsk_your_key_here
+```
 (Note: The .env file is git-ignored to prevent secrets from leaking into version control.)
 
-⚡ Usage Guide
-Step 1: Generate Taxonomy (Research Phase)
+---
+
+## ⚡ Usage Guide
+### Step 1: Generate Taxonomy (Research Phase)
 Before tagging, the system needs to understand the data. Run the EDA notebook to analyze the CSV and generate the taxonomy file.
 
-File: notebooks/01_taxonomy_eda.ipynb
+**File:** `notebooks/01_taxonomy_eda.ipynb`
 
-Action: Open in Jupyter and run all cells.
+**Action:** Open in Jupyter and run all cells.
 
-Output: Creates data/taxonomy.json.
+**Output:** Creates `data/taxonomy.json`
 
-Step 2: Run Tagging Pipeline (Production Phase)
+### Step 2: Run Tagging Pipeline (Production Phase)
 Once the taxonomy exists, run the main pipeline script. This will load the data and process each proposal through the agentic graph.
 
-Command:
+**Command:**
 
-Bash
-
+```Bash
 python -m src.main
-Action: The script will initialize the graph, validate inputs, and process rows sequentially with rate limiting.
+```
 
-Output: Creates data/tagged_results.csv.
+**Action:** The script will initialize the graph, validate inputs, and process rows sequentially with rate limiting.
 
-📊 Limitations
-Scaling Considerations
-For datasets exceeding 10,000 records, the following optimizations are recommended:
+**Output:** Creates `data/tagged_results.csv`
 
-Context Management: Replace batch taxonomy generation with embedding-based clustering (HDBSCAN) to handle larger corpora.
+---
 
-Concurrency: Deploy the graph logic as an async microservice to process records in parallel.
+## 📈 Sample Results
+Below is a sample of the actual output generated by the pipeline. Note how the **Score** reflects the confidence based on evidence extraction.
+
+| id | tags | decision | confidence | evidence | rationale |
+| :--- | :--- | :--- | :--- | :--- | :--- |
+| **AL-1** | Bridge Construction | `PUBLISH` | 1.0 | "for construction of..." | Score 1.0 > 0.65 |
+| **AK-1** | Bridge Construction | `PUBLISH` | 1.0 | "replace the existing..." | Score 1.0 > 0.65 |
+| **MA-1** | N/A | `HOLD` | 0.2 | *None found* | Issues: ['No tags selected', 'Evidence too short'] |
+
+
+---
+
+
+## 📊 Scaling & Future Scope
+**Scaling Considerations:** For datasets exceeding 10,000 records, the following optimizations are recommended:
+
+**Context Management:** Replace batch taxonomy generation with embedding-based clustering (HDBSCAN) to handle larger corpora.
+
+**Concurrency:** Deploy the graph logic as an async microservice to process records in parallel.

@@ -8,9 +8,9 @@ from src.graph import build_graph
 def main():
     print("🚀 Starting Agentic Pipeline (Modular)...")
     
-    # 1. Load Data
+    # --- STEP 1: LOAD & VALIDATE INPUTS ---
     try:
-        # Check Inputs
+        # Sanity check: Ensure our input files actually exist before we start
         if not os.path.exists(Config.INPUT_CSV):
             raise FileNotFoundError(f"Missing input CSV at: {Config.INPUT_CSV}")
         
@@ -20,8 +20,13 @@ def main():
                 "👉 Did you run the 'Taxonomy_Generation.ipynb' notebook first?"
             )
             
-        # Read Files
+        # Load the raw data
         df = pd.read_csv(Config.INPUT_CSV)
+
+        # Load the taxonomy schema
+        # We handle two cases here: 
+        # 1. The JSON is a direct dictionary of categories
+        # 2. The JSON is wrapped in a "taxonomy" key (common artifact from Phase 1)
         with open(Config.TAXONOMY_FILE, 'r') as f:
             tax_raw = json.load(f)
             # Handle potential nested 'taxonomy' key from Phase 1 output
@@ -34,15 +39,16 @@ def main():
         print(f"❌ Initialization Error: {e}")
         return
 
-    # 2. Compile Graph
+    # --- STEP 2: BUILD THE AGENT ---
+    # Compile the LangGraph state machine once. 
     app = build_graph()
     final_results = []
 
-    # 3. Process Rows
+    # --- STEP 3: RUN THE PIPELINE ---
     print(f"⚙️  Processing...")
     for i, row in df.iterrows():
         try:
-            # Initialize state with inputs and defaults
+            # Create a fresh state object for this specific proposal.
             initial_state = {
                 "proposal_id": str(row.get('proposalId', i)),
                 "description": row['description'],
@@ -51,13 +57,14 @@ def main():
                 "validation_passed": False, "validation_issues": []
             }
             
-            # Run Agent
+            # Run the Agent
             final = app.invoke(initial_state)
             
-            # Log & Store
+            # Visual feedback for the console user
             icon = "🟢" if final['decision'] == "PUBLISH" else "🔴"
             print(f"{icon} [{final['proposal_id']}] {final['decision']} (Conf: {final['confidence_score']})")
 
+            # Collect the structured output
             final_results.append({
                 "id": final['proposal_id'],
                 "description": row['description'],
@@ -71,9 +78,9 @@ def main():
             time.sleep(0.5) # Rate limit politeness
 
         except Exception as e:
-            print(f"❌ Error on row {i}: {e}")
+            print(f"❌ Error on row {i}: {e}")   # Graceful failure: If one row crashes, don't kill the whole script.
 
-    # 4. Save Results
+    # --- STEP 4: EXPORT THE RESULTS ---
     res_df = pd.DataFrame(final_results)
     res_df.to_csv(Config.OUTPUT_FILE, index=False)
     print(f"\n✅ Pipeline Complete. Results saved to: {Config.OUTPUT_FILE}")
