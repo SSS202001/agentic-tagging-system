@@ -1,0 +1,76 @@
+{
+  "taxonomy": {
+    "Bridge Construction and Repair": {
+      "definition": "Projects involving the construction, replacement, or repair of bridges.",
+      "keywords": [
+        "bridge",
+        "replacement",
+        "repair"
+      ],
+      "text_example": "A project to replace an existing bridge with a new structure."
+    },
+    "Roadway Rehabilitation and Resurfacing": {
+      "definition": "Projects focused on rehabilitating or resurfacing existing roadways, including milling, paving, and overlay work.",
+      "keywords": [
+        "resurfacing",
+        "rehabilitation",
+        "paving"
+      ],
+      "text_example": "A project to resurface a section of highway with new asphalt."
+    },
+    "Traffic and Safety Improvements": {
+      "definition": "Projects aimed at enhancing traffic flow, safety, and pedestrian accessibility, including signal installations and sidewalk construction.",
+      "keywords": [
+        "traffic",
+        "safety",
+        "signals"
+      ],
+      "text_example": "A project to install new traffic signals and improve pedestrian crossings."
+    },
+    "Maintenance and Upkeep": {
+      "definition": "Projects related to the routine maintenance and upkeep of existing infrastructure, including mowing, litter removal, and structural repairs.",
+      "keywords": [
+        "maintenance",
+        "upkeep",
+        "mowing"
+      ],
+      "text_example": "A contract for regular mowing and litter removal along highways."
+    },
+    "New Construction and Expansion": {
+      "definition": "Projects involving the construction of new infrastructure, such as new roads, interchanges, or roundabouts.",
+      "keywords": [
+        "construction",
+        "expansion",
+        "new"
+      ],
+      "text_example": "A project to build a new roundabout at a busy intersection."
+    },
+    "Drainage and Water Management": {
+      "definition": "Projects focused on improving drainage systems, including culvert installations and stormwater management.",
+      "keywords": [
+        "drainage",
+        "culverts",
+        "stormwater"
+      ],
+      "text_example": "A project to install new culverts and improve stormwater drainage."
+    },
+    "Pedestrian and Bicycle Infrastructure": {
+      "definition": "Projects aimed at enhancing infrastructure for pedestrians and bicyclists, including sidewalk construction, bike lanes, and shared-use paths.",
+      "keywords": [
+        "pedestrian",
+        "bicycle",
+        "sidewalks"
+      ],
+      "text_example": "A project to build new sidewalks and bike lanes along a busy street."
+    },
+    "Intelligent Transportation Systems (ITS)": {
+      "definition": "Projects related to the implementation and expansion of intelligent transportation systems, including smart traffic management and surveillance.",
+      "keywords": [
+        "ITS",
+        "intelligent",
+        "traffic management"
+      ],
+      "text_example": "A project to install a new intelligent transportation system along a highway corridor."
+    }
+  }
+}

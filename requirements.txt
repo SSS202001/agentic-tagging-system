@@ -1,0 +1,20 @@
+# --- Core Agent Pipeline ---
+langgraph
+langchain
+langchain_groq
+langchain_core
+python-dotenv
+pydantic
+
+# --- Data Processing ---
+pandas
+numpy
+
+# --- API Clients ---
+groq
+
+# --- Notebooks & Visualization (Phase 1 & Analytics) ---
+matplotlib
+seaborn
+jupyter
+ipykernel
